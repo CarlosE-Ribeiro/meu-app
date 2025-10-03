@@ -59,49 +59,33 @@ pipeline {
     }
 
     stage('OWASP Dependency-Check') {
-      when { expression { return params.RUN_DEP_SCAN } }
-      options { timeout(time: 5, unit: 'MINUTES') } // evita travar o job
-      steps {
-        // Garante que o cache existe
-        bat """
-          if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
-        """
-
-        // Monta os argumentos (com ou sem API key)
-        script {
-          def dcArgs = [
-            '-DskipTests',
-            'org.owasp:dependency-check-maven:check',
-            "-DdataDirectory=${env.DC_CACHE}",
-            '-Ddependency-check.quickQueryTimestamp=true',
-            '-Ddependency-check.cve.validForHours=24',
-            // Desative analisadores que você não usa (acelera)
-            '-Danalyzers.pg.enabled=false',
-            '-Danalyzer.node.audit.enabled=false',
-            '-Danalyzer.nuspec.enabled=false',
-            '-Danalyzer.assembly.enabled=false'
-          ]
-
-          // Se você habilitou a credencial NVD_API_KEY no environment acima:
-          if (env.NVD_API_KEY) {
-            dcArgs += "-Ddependency-check.nvd.api.key=${env.NVD_API_KEY}"
-          }
-
-          bat "mvn -B ${dcArgs.join(' ')}"
+    options { timeout(time: 5, unit: 'MINUTES') }
+    steps {
+        bat 'if not exist "C:\\DC_CACHE" mkdir "C:\\DC_CACHE"'
+        withCredentials([string(credentialsId: 'NVD_API_KEY', variable: 'NVD_API_KEY')]) {
+        bat '''
+            mvn -B -DskipTests org.owasp:dependency-check-maven:check ^
+            -Ddependency-check.nvd.api.key=%NVD_API_KEY% ^
+            -DdataDirectory=C:\\DC_CACHE ^
+            -Ddependency-check.quickQueryTimestamp=true ^
+            -Ddependency-check.cve.validForHours=24 ^
+            -Danalyzers.pg.enabled=false ^
+            -Danalyzer.node.audit.enabled=false ^
+            -Danalyzer.nuspec.enabled=false ^
+            -Danalyzer.assembly.enabled=false
+        '''
         }
-      }
-      post {
-        always {
-          // Publica o relatório no Jenkins e arquiva os arquivos
-          dependencyCheckPublisher(
-            pattern: 'target/dependency-check-report.xml',
-            shouldFailBuildOnCVSS: (params.FAIL_CVSS as double),
-            stopBuild: false
-          )
-          archiveArtifacts artifacts: 'target/dependency-check-report.*', fingerprint: true
-        }
-      }
     }
+    post {
+        always {
+        // publique os relatórios se quiser vê-los no Jenkins
+        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+        archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+        }
+    }
+    }
+
+
   }
 
   post {
