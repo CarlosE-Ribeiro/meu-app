@@ -3,8 +3,8 @@ pipeline {
 
   // Ajuste os nomes conforme "Manage Jenkins » Tools"
   tools {
-    jdk   'JDK21'     // ex.: JDK 21 instalado no Jenkins
-    maven 'Maven3'    // ex.: Maven 3.x instalado no Jenkins
+    jdk   'jdk-21'     // ex.: JDK 21 instalado no Jenkins
+    maven 'maven-3.9'    // ex.: Maven 3.x instalado no Jenkins
   }
 
   options {
