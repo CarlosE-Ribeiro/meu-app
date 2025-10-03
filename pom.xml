@@ -11,14 +11,25 @@
   <packaging>jar</packaging>
 
   <properties>
-    <!-- Compilar com JDK 21 -->
     <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <junit.jupiter.version>5.10.2</junit.jupiter.version>
+    <surefire.version>3.2.5</surefire.version>
   </properties>
+
+  <dependencies>
+    <!-- JUnit 5 para testes -->
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <version>${junit.jupiter.version}</version>
+      <scope>test</scope>
+    </dependency>
+  </dependencies>
 
   <build>
     <plugins>
-      <!-- Compilador (usa a release 21 que definimos acima) -->
+      <!-- Compilar com Java 21 -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
@@ -28,7 +39,18 @@
         </configuration>
       </plugin>
 
-      <!-- Gera um JAR executável (java -jar ...) definindo a classe principal -->
+      <!-- Executar testes JUnit 5 -->
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-surefire-plugin</artifactId>
+        <version>${surefire.version}</version>
+        <configuration>
+          <!-- Garante descoberta do JUnit 5 -->
+          <useModulePath>false</useModulePath>
+        </configuration>
+      </plugin>
+
+      <!-- Gera JAR executável -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
