@@ -64,27 +64,33 @@ pipeline {
 
     // 1) Atualiza/baixa a base da NVD para o cache
     stage('OWASP Dependency-Check (update cache)') {
-      options { timeout(time: 25, unit: 'MINUTES') } // primeira carga pode demorar
-      steps {
+    options { timeout(time: 25, unit: 'MINUTES') } // primeira carga pode demorar
+    steps {
         withCredentials([string(credentialsId: 'NVD_API_KEY', variable: 'NVD_API_KEY')]) {
-          bat """
+        bat """
             if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
             mvn -B org.owasp:dependency-check-maven:9.1.0:update-only ^
-              -Dnvd.api.key=%NVD_API_KEY% ^
-              -Dnvd.api.delay=%NVD_DELAY_MS% ^
-              -Dnvd.api.cloudflare.retries=%NVD_CF_RETRIES% ^
-              -DdataDirectory=%DC_CACHE%
-          """
+            -Dnvd.api.key=%NVD_API_KEY% ^
+            -Dnvd.api.delay=%NVD_DELAY_MS% ^
+            -Dnvd.api.retries=10 ^
+            -Dnvd.api.cloudflare.retries=10 ^
+            -DdataDirectory=%DC_CACHE% ^
+            -Dhttps.protocols=TLSv1.2,TLSv1.3
+            /* Se você usa proxy corporativo, descomente as 2 linhas abaixo:
+            ^ -Dhttps.proxyHost=proxy.seudominio.local ^
+            -Dhttps.proxyPort=3128
+            */
+        """
         }
       }
     }
 
     // 2) Roda o scan utilizando o cache baixado
     stage('OWASP Dependency-Check (scan)') {
-      options { timeout(time: 12, unit: 'MINUTES') }
-      steps {
+    options { timeout(time: 12, unit: 'MINUTES') }
+    steps {
         bat """
-          mvn -B -DskipTests org.owasp:dependency-check-maven:9.1.0:check ^
+        mvn -B -DskipTests org.owasp:dependency-check-maven:9.1.0:check ^
             -DfailBuildOnCVSS=%FAIL_CVSS% ^
             -Dautoupdate=false ^
             -DdataDirectory=%DC_CACHE% ^
@@ -96,12 +102,10 @@ pipeline {
             -Danalyzer.assembly.enabled=false
         """
       }
-      post {
+    post {
         always {
-          // publica no plugin do Jenkins (se instalado)
-          dependencyCheckPublisher()
-          // guarda relatórios (HTML, XML, JSON)
-          archiveArtifacts artifacts: 'target/dependency-check-report.*', allowEmptyArchive: true
+        dependencyCheckPublisher()
+        archiveArtifacts artifacts: 'target/dependency-check-report.*', allowEmptyArchive: true
         }
       }
     }
