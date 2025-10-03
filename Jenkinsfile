@@ -14,16 +14,17 @@ pipeline {
 
   parameters {
     booleanParam(name: 'RUN_DEP_SCAN', defaultValue: true, description: 'Executar OWASP Dependency-Check?')
-    string(name: 'FAIL_CVSS', defaultValue: '7.0', description: 'Falhar build se CVSS >= (ex.: 7.0). Use 0 para nunca falhar.')
+    string(name: 'FAIL_CVSS', defaultValue: '0.0', description: 'Falhar build se CVSS >= (ex.: 7.0). Use 0 para nunca falhar.')
   }
 
   environment {
-    // Cache persistente do Dependency-Check (crie a pasta uma vez)
+    // pasta de cache local do Dependency-Check
     DC_CACHE = 'C:\\DC_CACHE'
-
-    // Se tiver salvo sua chave da NVD em "Credentials → Secret text" com ID NVD_API_KEY,
-    // descomente a linha abaixo e comente a de cima:
-    // NVD_API_KEY = credentials('NVD_API_KEY')
+    // ajustar se quiser falhar o build acima de um certo CVSS
+    FAIL_CVSS = '7.0'
+    // tunáveis para contornar rate limit/Cloudflare
+    NVD_DELAY_MS = '15000'
+    NVD_CF_RETRIES = '6'
   }
 
   stages {
@@ -41,60 +42,72 @@ pipeline {
         '''
       }
       post {
-        success {
-          archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+        always {
+          archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
+          fingerprint 'target/*.jar'
         }
       }
     }
 
     stage('Test') {
       steps {
-        bat 'mvn -B test'
+        bat '''
+          mvn -B test
+        '''
       }
       post {
         always {
-          junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
+          junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
         }
       }
     }
 
-    stage('OWASP Dependency-Check') {
-    options { timeout(time: 5, unit: 'MINUTES') }
-    steps {
-        bat 'if not exist "C:\\DC_CACHE" mkdir "C:\\DC_CACHE"'
-        withCredentials([string(credentialsId: 'NVD_API_KEY', variable: 'NVD_API_KEY')]) {
-        bat '''
-            mvn -B -DskipTests org.owasp:dependency-check-maven:check ^
-                -Dnvd.api.key=%NVD_API_KEY% ^
-                -Dnvd.api.delay=15000 ^
-                -Dnvd.api.cloudflare.retries=6 ^
-                -DdataDirectory=C:\\DC_CACHE ^
-                -Dautoupdate=false
-                -Ddependency-check.failOnError=false
-                -Ddependency-check.quickQueryTimestamp=true ^
-                -Ddependency-check.cve.validForHours=24 ^
-                -Danalyzers.pg.enabled=false ^
-                -Danalyzer.node.audit.enabled=false ^
-                -Danalyzer.nuspec.enabled=false ^
-                -Danalyzer.assembly.enabled=false
-        '''
+    // 1) Atualiza/baixa a base da NVD para o cache
+    stage('OWASP Dependency-Check (update cache)') {
+      options { timeout(time: 25, unit: 'MINUTES') } // primeira carga pode demorar
+      steps {
+        withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+          bat """
+            if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
+            mvn -B org.owasp:dependency-check-maven:9.1.0:updateonly ^
+              -Dnvd.api.key=%NVD_API_KEY% ^
+              -Dnvd.api.delay=%NVD_DELAY_MS% ^
+              -Dnvd.api.cloudflare.retries=%NVD_CF_RETRIES% ^
+              -DdataDirectory=%DC_CACHE%
+          """
         }
+      }
     }
-    post {
+
+    // 2) Roda o scan utilizando o cache baixado
+    stage('OWASP Dependency-Check (scan)') {
+      options { timeout(time: 12, unit: 'MINUTES') }
+      steps {
+        bat """
+          mvn -B -DskipTests org.owasp:dependency-check-maven:9.1.0:check ^
+            -DfailBuildOnCVSS=%FAIL_CVSS% ^
+            -Dautoupdate=false ^
+            -DdataDirectory=%DC_CACHE% ^
+            -Ddependency-check.quickQueryTimestamp=true ^
+            -Ddependency-check.cve.validForHours=24 ^
+            -Danalyzers.pg.enabled=false ^
+            -Danalyzer.node.audit.enabled=false ^
+            -Danalyzer.nuspec.enabled=false ^
+            -Danalyzer.assembly.enabled=false
+        """
+      }
+      post {
         always {
-        // publique os relatórios se quiser vê-los no Jenkins
-        dependencyCheckPublisher()
-        archiveArtifacts artifacts: 'target/dependency-check-report.*', allowEmptyArchive: true
+          // publica no plugin do Jenkins (se instalado)
+          dependencyCheckPublisher()
+          // guarda relatórios (HTML, XML, JSON)
+          archiveArtifacts artifacts: 'target/dependency-check-report.*', allowEmptyArchive: true
         }
+      }
     }
-    }
-
-
-  }
 
   post {
     always {
       echo "Build: ${currentBuild.currentResult}"
     }
   }
-}
