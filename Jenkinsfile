@@ -66,7 +66,7 @@ pipeline {
     stage('OWASP Dependency-Check (update cache)') {
       options { timeout(time: 25, unit: 'MINUTES') } // primeira carga pode demorar
       steps {
-        withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+        withCredentials([string(credentialsId: 'NVD_API_KEY', variable: 'NVD_API_KEY')]) {
           bat """
             if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
             mvn -B org.owasp:dependency-check-maven:9.1.0:updateonly ^
