@@ -65,14 +65,15 @@ pipeline {
         withCredentials([string(credentialsId: 'NVD_API_KEY', variable: 'NVD_API_KEY')]) {
         bat '''
             mvn -B -DskipTests org.owasp:dependency-check-maven:check ^
-            -Dnvd.api.key=%NVD_API_KEY% ^
-            -DdataDirectory=C:\\DC_CACHE ^
-            -Ddependency-check.quickQueryTimestamp=true ^
-            -Ddependency-check.cve.validForHours=24 ^
-            -Danalyzers.pg.enabled=false ^
-            -Danalyzer.node.audit.enabled=false ^
-            -Danalyzer.nuspec.enabled=false ^
-            -Danalyzer.assembly.enabled=falsee
+                -Dnvd.api.key=%NVD_API_KEY% ^
+                -Dnvd.api.delay=6000 ^
+                -DdataDirectory=C:\\DC_CACHE ^
+                -Ddependency-check.quickQueryTimestamp=true ^
+                -Ddependency-check.cve.validForHours=24 ^
+                -Danalyzers.pg.enabled=false ^
+                -Danalyzer.node.audit.enabled=false ^
+                -Danalyzer.nuspec.enabled=false ^
+                -Danalyzer.assembly.enabled=false
         '''
         }
     }
