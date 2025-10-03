@@ -2,7 +2,7 @@ pipeline {
   agent any
 
   tools {
-    jdk 'jdk-22'        // mesmo nome configurado em Manage Jenkins > Tools
+    jdk 'jdk-21'        // mesmo nome configurado em Manage Jenkins > Tools
     maven 'maven-3.9'   // idem
   }
 

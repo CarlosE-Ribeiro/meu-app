@@ -11,14 +11,14 @@
   <packaging>jar</packaging>
 
   <properties>
-    <!-- Compilar com JDK 22 -->
-    <maven.compiler.release>22</maven.compiler.release>
+    <!-- Compilar com JDK 21 -->
+    <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
 
   <build>
     <plugins>
-      <!-- Compilador (usa a release 22 que definimos acima) -->
+      <!-- Compilador (usa a release 21 que definimos acima) -->
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
