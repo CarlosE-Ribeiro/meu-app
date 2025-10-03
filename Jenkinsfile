@@ -3,11 +3,11 @@ pipeline {
 
   // Ajuste os nomes conforme "Manage Jenkins » Tools"
   tools {
-    jdk   'jdk-21'     // ex.: JDK 21 instalado no Jenkins
-    maven 'maven-3.9'    // ex.: Maven 3.x instalado no Jenkins
+    jdk   'jdk-21'      // ex.: JDK 21 instalado no Jenkins
+    maven 'maven-3.9'   // ex.: Maven 3.x instalado no Jenkins
   }
 
-   options {
+  options {
     timestamps()
     buildDiscarder(logRotator(numToKeepStr: '20'))
   }
@@ -106,13 +106,12 @@ pipeline {
       }
     }
 
+  } // <----- ADICIONADA: fecha o bloco stages
+
   post {
     always {
       echo "Build: ${currentBuild.currentResult}"
     }
   }
 
-  }
-
-  }
-  
+} // <----- ADICIONADA: fecha o bloco pipeline
