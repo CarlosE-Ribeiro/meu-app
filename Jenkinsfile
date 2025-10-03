@@ -7,29 +7,42 @@ pipeline {
     maven 'maven-3.9'    // ex.: Maven 3.x instalado no Jenkins
   }
 
-  options {
+   options {
     timestamps()
+    ansiColor('xterm')
     buildDiscarder(logRotator(numToKeepStr: '20'))
-    disableConcurrentBuilds()
+  }
+
+  parameters {
+    booleanParam(name: 'RUN_DEP_SCAN', defaultValue: true, description: 'Executar OWASP Dependency-Check?')
+    string(name: 'FAIL_CVSS', defaultValue: '7.0', description: 'Falhar build se CVSS >= (ex.: 7.0). Use 0 para nunca falhar.')
+  }
+
+  environment {
+    // Cache persistente do Dependency-Check (crie a pasta uma vez)
+    DC_CACHE = 'C:\\DC_CACHE'
+
+    // Se tiver salvo sua chave da NVD em "Credentials → Secret text" com ID NVD_API_KEY,
+    // descomente a linha abaixo e comente a de cima:
+    // NVD_API_KEY = credentials('NVD_API_KEY')
   }
 
   stages {
 
     stage('Checkout') {
       steps {
-        // Se o job já aponta para seu repo, "checkout scm" basta
         checkout scm
       }
     }
 
     stage('Build') {
       steps {
-        // build sem testes; empacota o JAR
-        bat 'mvn -B -DskipTests clean package'
+        bat '''
+          mvn -B -DskipTests clean package
+        '''
       }
       post {
         success {
-          // arquiva o jar para download no Jenkins
           archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
         }
       }
@@ -37,46 +50,55 @@ pipeline {
 
     stage('Test') {
       steps {
-        // executa testes unitários
         bat 'mvn -B test'
       }
       post {
         always {
-          // publica resultados JUnit (aparece como "Test Result")
-          junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+          junit allowEmptyResults: true, testResults: '**/target/surefire-reports/*.xml'
         }
       }
     }
 
     stage('OWASP Dependency-Check') {
+      when { expression { return params.RUN_DEP_SCAN } }
+      options { timeout(time: 5, unit: 'MINUTES') } // evita travar o job
       steps {
-        // roda o scan (sem testes)
-        bat 'mvn -B -DskipTests org.owasp:dependency-check-maven:check'
+        // Garante que o cache existe
+        bat """
+          if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
+        """
+
+        // Monta os argumentos (com ou sem API key)
+        script {
+          def dcArgs = [
+            '-DskipTests',
+            'org.owasp:dependency-check-maven:check',
+            "-DdataDirectory=${env.DC_CACHE}",
+            '-Ddependency-check.quickQueryTimestamp=true',
+            '-Ddependency-check.cve.validForHours=24',
+            // Desative analisadores que você não usa (acelera)
+            '-Danalyzers.pg.enabled=false',
+            '-Danalyzer.node.audit.enabled=false',
+            '-Danalyzer.nuspec.enabled=false',
+            '-Danalyzer.assembly.enabled=false'
+          ]
+
+          // Se você habilitou a credencial NVD_API_KEY no environment acima:
+          if (env.NVD_API_KEY) {
+            dcArgs += "-Ddependency-check.nvd.api.key=${env.NVD_API_KEY}"
+          }
+
+          bat "mvn -B ${dcArgs.join(' ')}"
+        }
       }
       post {
         always {
-          // Publisher nativo do plugin "OWASP Dependency-Check"
-          // -> mostra painel com vulnerabilidades + tendência
+          // Publica o relatório no Jenkins e arquiva os arquivos
           dependencyCheckPublisher(
             pattern: 'target/dependency-check-report.xml',
-            // Política: não falhar o build por CVSS (ajuste se quiser)
-            shouldFailBuildOnCVSS: 0.0,
+            shouldFailBuildOnCVSS: (params.FAIL_CVSS as double),
             stopBuild: false
           )
-
-          // (Opcional) Relatório HTML bonitinho – requer plugin "HTML Publisher"
-          // Descomente se quiser o link de HTML no build:
-          /*
-          publishHTML(target: [
-            reportDir: 'target',
-            reportFiles: 'dependency-check-report.html',
-            reportName: 'OWASP Dependency-Check',
-            keepAll: true,
-            alwaysLinkToLastBuild: true
-          ])
-          */
-
-          // Arquiva os relatórios para download
           archiveArtifacts artifacts: 'target/dependency-check-report.*', fingerprint: true
         }
       }
@@ -85,7 +107,7 @@ pipeline {
 
   post {
     always {
-      echo "Pipeline finalizado: ${currentBuild.currentResult}"
+      echo "Build: ${currentBuild.currentResult}"
     }
   }
 }
