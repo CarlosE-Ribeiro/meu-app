@@ -66,8 +66,8 @@ pipeline {
         bat '''
             mvn -B -DskipTests org.owasp:dependency-check-maven:check ^
                 -Dnvd.api.key=%NVD_API_KEY% ^
-                -Dnvd.api.delay=8000 ^
-                -Dnvd.api.cloudflare.retries=5 ^
+                -Dnvd.api.delay=10000 ^
+                -Dnvd.api.cloudflare.retries=6 ^
                 -DdataDirectory=C:\\DC_CACHE ^
                 -Ddependency-check.quickQueryTimestamp=true ^
                 -Ddependency-check.cve.validForHours=24 ^
