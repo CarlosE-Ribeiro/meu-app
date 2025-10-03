@@ -111,5 +111,5 @@ pipeline {
       echo "Build: ${currentBuild.currentResult}"
     }
   }
-  
+  }
   }
