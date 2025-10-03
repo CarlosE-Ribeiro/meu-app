@@ -69,7 +69,7 @@ pipeline {
         withCredentials([string(credentialsId: 'NVD_API_KEY', variable: 'NVD_API_KEY')]) {
           bat """
             if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
-            mvn -B org.owasp:dependency-check-maven:9.1.0:updateonly ^
+            mvn -B org.owasp:dependency-check-maven:9.1.0:update-only ^
               -Dnvd.api.key=%NVD_API_KEY% ^
               -Dnvd.api.delay=%NVD_DELAY_MS% ^
               -Dnvd.api.cloudflare.retries=%NVD_CF_RETRIES% ^
