@@ -66,7 +66,8 @@ pipeline {
         bat '''
             mvn -B -DskipTests org.owasp:dependency-check-maven:check ^
                 -Dnvd.api.key=%NVD_API_KEY% ^
-                -Dnvd.api.delay=6000 ^
+                -Dnvd.api.delay=8000 ^
+                -Dnvd.api.cloudflare.retries=5 ^
                 -DdataDirectory=C:\\DC_CACHE ^
                 -Ddependency-check.quickQueryTimestamp=true ^
                 -Ddependency-check.cve.validForHours=24 ^
@@ -80,8 +81,8 @@ pipeline {
     post {
         always {
         // publique os relatórios se quiser vê-los no Jenkins
-        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-        archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+        dependencyCheckPublisher()
+        archiveArtifacts artifacts: 'target/dependency-check-report.*', allowEmptyArchive: true
         }
     }
     }
