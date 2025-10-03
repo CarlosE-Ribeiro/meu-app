@@ -63,6 +63,24 @@
           </archive>
         </configuration>
       </plugin>
+
+      <plugin>
+      <groupId>org.owasp</groupId>
+      <artifactId>dependency-check-maven</artifactId>
+      <version>9.1.0</version>
+      <configuration>
+        <!-- Gera HTML e XML em target/ -->
+        <format>ALL</format>
+
+        <!-- Se quiser que o build falhe com CVSS alto, ative e ajuste o limite (0–10):
+        <failBuildOnCVSS>7</failBuildOnCVSS>
+        -->
+
+        <!-- Opcional: diretório local para cache (ajuda a não baixar dados sempre)
+        <dataDirectory>${user.home}/.m2/repository/org/owasp/dependency-check-data</dataDirectory>
+        -->
+      </configuration>
+    </plugin>
     </plugins>
   </build>
 </project>
