@@ -79,60 +79,19 @@ pipeline {
         }
       }
     }
-
-    // 1) Atualiza/baixa a base da NVD para o cache
-    stage('OWASP Dependency-Check (update cache)') {
-      when { expression { return params.RUN_DEP_SCAN } }
-      options { timeout(time: 25, unit: 'MINUTES') } // primeira carga pode demorar
-      steps {
-        withCredentials([string(credentialsId: 'NVD_API_KEY', variable: 'NVD_API_KEY')]) {
-          bat """
-            if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
-            mvn -B org.owasp:dependency-check-maven:9.1.0:update-only ^
-              -Dnvd.api.key=%NVD_API_KEY% ^
-              -Dnvd.api.delay=%NVD_DELAY_MS% ^
-              -Dnvd.api.retries=%NVD_RETRIES% ^
-              -Dnvd.api.cloudflare.retries=%NVD_CF_RETRIES% ^
-              -DdataDirectory=%DC_CACHE% ^
-              -Dhttps.protocols=TLSv1.2,TLSv1.3
-              /* Se sua rede usa proxy, remova o comentario e ajuste host/porta:
-              ^ -Dhttps.proxyHost=proxy.seudominio.local ^
-              -Dhttps.proxyPort=3128 ^
-              -Dhttp.nonProxyHosts="localhost|127.0.0.1|*.seudominio.local"
-              */
-          """
-        }
-      }
+    
+    stage( 'Vulnerabilidades de verificação de dependência OWASP' ) { 
+      steps { 
+        dependencyCheck additionalArguments: ''' 
+                    -o './' 
+                    -s './' 
+                    -f 'ALL' 
+                    --prettyPrint''' , odcInstallation: 'Vulnerabilidades de verificação de dependência OWASP'
+        
+         dependencyCheckPublisher pattern: 'dependency-check-report.xml'
+       } 
     }
-
-    // 2) Roda o scan utilizando o cache baixado
-    stage('OWASP Dependency-Check (scan)') {
-      when { expression { return params.RUN_DEP_SCAN } }
-      options { timeout(time: 12, unit: 'MINUTES') }
-      steps {
-        bat """
-          mvn -B -DskipTests org.owasp:dependency-check-maven:9.1.0:check ^
-            -DfailBuildOnCVSS=${params.FAIL_CVSS} ^
-            -Dautoupdate=false ^
-            -DdataDirectory=%DC_CACHE% ^
-            -Ddependency-check.quickQueryTimestamp=true ^
-            -Ddependency-check.cve.validForHours=24 ^
-            -Danalyzers.pg.enabled=false ^
-            -Danalyzer.node.audit.enabled=false ^
-            -Danalyzer.nuspec.enabled=false ^
-            -Danalyzer.assembly.enabled=false
-        """
-      }
-      post {
-        always {
-          // publica no plugin do Jenkins (se instalado)
-          dependencyCheckPublisher()
-          // guarda relatórios (HTML, XML, JSON)
-          archiveArtifacts artifacts: 'target/dependency-check-report.*', allowEmptyArchive: true
-        }
-      }
-    }
-  }
+    
 
   post {
     always {
