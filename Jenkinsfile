@@ -92,7 +92,7 @@ pipeline {
        } 
     }
     
-
+  }
   post {
     always {
       echo "Build: ${currentBuild.currentResult}"
