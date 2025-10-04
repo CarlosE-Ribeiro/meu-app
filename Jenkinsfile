@@ -61,24 +61,7 @@ pipeline {
       }
     }
 
-    // ─────────────────────────────────────────────────────────────────────────────
-    // PRECHECK: valida a chamada HTTP à API da NVD (sem vazar a chave)
-    stage('NVD API precheck') {
-      when { expression { return params.RUN_DEP_SCAN } }
-      steps {
-        withCredentials([string(credentialsId: 'NVD_API_KEY', variable: 'NVD_API_KEY')]) {
-          bat '''
-            echo Validando acesso à API da NVD (somente status)...
-            powershell -NoProfile -Command ^
-              "$h=@{'apiKey'=$env:NVD_API_KEY};" ^
-              "try{" ^
-              "  $r=Invoke-WebRequest -UseBasicParsing -Headers $h -Uri 'https://services.nvd.nist.gov/rest/json/cves/2.0?resultsPerPage=1';" ^
-              "  Write-Host ('NVD HTTP Status: ' + [int]$r.StatusCode)" ^
-              "}catch{ if($_.Exception.Response){ $code=[int]$_.Exception.Response.StatusCode; Write-Host ('NVD HTTP Status: ' + $code) } else { Write-Host 'NVD HTTP Status: (sem resposta)'; exit 1 } }"
-          '''
-        }
-      }
-    }
+
     
     stage( 'Vulnerabilidades de verificação de dependência OWASP' ) { 
       steps { 
