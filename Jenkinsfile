@@ -62,14 +62,25 @@ pipeline {
     }
     
     stage('OWASP Dependency-Check') {
+    agent any // Certifique-se de que seu agente está definido
+    tools {
+        // O nome aqui ('OWASP-DC') deve corresponder ao configurado em "Global Tool Configuration"
+        dependencyCheck 'OWASP-DC'
+    }
     steps {
         withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
             script {
-                // 1. Pega o caminho completo da instalação da ferramenta configurada globalmente
-                def dcPath = tool name: 'OWASP-DC', type: 'dependencyCheck'
+                // 1. Pega o caminho da instalação da ferramenta
+                def dcHome = tool 'OWASP-DC'
 
-                // 2. Executa o comando 'sh' usando o caminho completo para o executável
-                sh "'${dcPath}/bin/dependency-check.sh' --scan '.' --format 'ALL' --prettyPrint --apiKey '${NVD_API_KEY}' --project 'Meu Projeto'"
+                // 2. Adiciona o diretório /bin da ferramenta ao PATH do ambiente
+                env.PATH = "${dcHome}/bin:${env.PATH}"
+                
+                // 3. Agora executa o comando 'sh' de forma limpa.
+                // O shell encontrará 'dependency-check.sh' no PATH e usará a variável de ambiente para a chave.
+                sh '''
+                    dependency-check.sh --scan "." --format "ALL" --project "Meu Projeto" --apiKey "${NVD_API_KEY}"
+                '''
             }
         }
         
