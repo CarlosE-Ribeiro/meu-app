@@ -125,26 +125,39 @@ stage('Build') {
 
 
 stage('OWASP Dependency-Check') {
-    // a diretiva 'when' executa o stage somente se o parâmetro for true
-    when {
-        expression { params.RUN_DEP_SCAN }
-    }
-    steps {
-        withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
-            script {
-                // 1. Garanta que a ferramenta 'OWASP-DC' existe em "Manage Jenkins » Tools"
-                def dcPath = tool name: 'OWASP-DC', type: 'dependencyCheck'
+  when { expression { return params.RUN_DEP_SCAN } }
+  steps {
+    withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+      bat 'if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"'
 
-                // 2. Executa o comando para Windows (.bat) usando o caminho completo
-                bat """
-                    call "${dcPath}\\bin\\dependency-check.bat" --scan "." --format "ALL" --prettyPrint --apiKey "%NVD_API_KEY%" --project "Meu Projeto" --failOnCVSS ${params.FAIL_CVSS} --data "%DC_CACHE%"
-                """
-            }
-        }
-        
-        // O publisher continua o mesmo
-        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+      dependencyCheck(
+        odcInstallation: 'OWASP-DC',          // <-- MESMO nome configurado em Manage Jenkins → Tools
+        dataDirectory: "${env.DC_CACHE}",
+        additionalArguments: """
+          --scan .
+          --format ALL
+          --prettyPrint
+          --failOnCVSS ${params.FAIL_CVSS}
+          --nvdApiDelay ${env.NVD_DELAY_MS}
+          --nvdApiRetries ${env.NVD_RETRIES}
+          --nvdApiCloudflareRetries ${env.NVD_CF_RETRIES}
+          --disableAssembly
+          --disableNodeJS
+          --disableNodeAudit
+          --disableNugetConf
+          --disablePnpmAudit
+          --disableYarnAudit
+        """.trim().replaceAll("\\s+"," ")
+      )
+
+      dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
     }
+  }
+  post {
+    always {
+      archiveArtifacts artifacts: 'dependency-check-report.*', allowEmptyArchive: true
+    }
+  }
 }
 
 
