@@ -63,18 +63,21 @@ pipeline {
     
     stage('OWASP Dependency-Check') {
     steps {
-        // Envolve o comando com withCredentials para acessar a chave de forma segura
+        // withCredentials continua igual, para carregar a chave na variável de ambiente
         withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
-            script {
-                // Adiciona o argumento --apiKey e passa a variável de ambiente
-                dependencyCheck additionalArguments: "--scan . --format ALL --prettyPrint --apiKey ${env.NVD_API_KEY}", odcInstallation: 'OWASP-DC'
-                
-                // O publisher continua o mesmo
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-            }
+            
+            // AGORA, usamos um passo 'sh' para executar a ferramenta de linha de comando
+            // O Jenkins garante que a variável ${NVD_API_KEY} seja usada de forma segura aqui
+            sh '''
+                dependency-check.sh --scan "." --format "ALL" --prettyPrint --apiKey "${NVD_API_KEY}" --project "Meu Projeto"
+            '''
         }
+        
+        // O publisher continua o mesmo, para coletar os resultados após a execução
+        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
     }
-}
+  }
+
     
   }
   post {
