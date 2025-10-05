@@ -127,35 +127,36 @@ stage('Build') {
 stage('OWASP Dependency-Check') {
   when { expression { return params.RUN_DEP_SCAN } }
   steps {
-    withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
-      bat 'if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"'
+    // Se preferir, nem precisa do withCredentials; use nvdCredentialsId (abaixo)
+    bat 'if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"'
 
-      dependencyCheck(
-        odcInstallation: 'OWASP-DC',          // <-- MESMO nome configurado em Manage Jenkins → Tools
-        dataDirectory: "${env.DC_CACHE}",
-        additionalArguments: """
-          --scan .
-          --format ALL
-          --prettyPrint
-          --failOnCVSS ${params.FAIL_CVSS}
-          --nvdApiDelay ${env.NVD_DELAY_MS}
-          --nvdApiRetries ${env.NVD_RETRIES}
-          --nvdApiCloudflareRetries ${env.NVD_CF_RETRIES}
-          --disableAssembly
-          --disableNodeJS
-          --disableNodeAudit
-          --disableNugetConf
-          --disablePnpmAudit
-          --disableYarnAudit
-        """.trim().replaceAll("\\s+"," ")
-      )
+    dependencyCheck(
+      odcInstallation: 'OWASP-DC',              // mesmo nome em Manage Jenkins → Tools
+      nvdCredentialsId: 'nvd-api-key',          // use a credencial do tipo "Secret text" com esse ID
+      additionalArguments: """
+        --scan .
+        --format ALL
+        --prettyPrint
+        --failOnCVSS ${params.FAIL_CVSS}
+        --data "${env.DC_CACHE}"                // << cache local (equivale ao que você tentou em dataDirectory)
+        --out "odc-reports"                     // << pasta de relatórios
+        --nvdApiDelay ${env.NVD_DELAY_MS}
+        --nvdApiRetries ${env.NVD_RETRIES}
+        --nvdApiCloudflareRetries ${env.NVD_CF_RETRIES}
+        --disableAssembly
+        --disableNodeJS
+        --disableNodeAudit
+        --disableNugetConf
+        --disablePnpmAudit
+        --disableYarnAudit
+      """.trim().replaceAll("\\s+"," ")
+    )
 
-      dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-    }
+    dependencyCheckPublisher pattern: 'odc-reports/dependency-check-report.xml'
   }
   post {
     always {
-      archiveArtifacts artifacts: 'dependency-check-report.*', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'odc-reports/dependency-check-report.*', allowEmptyArchive: true
     }
   }
 }
