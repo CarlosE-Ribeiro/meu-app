@@ -65,7 +65,7 @@ pipeline {
     agent any // Certifique-se de que seu agente está definido
     tools {
         // O nome aqui ('OWASP-DC') deve corresponder ao configurado em "Global Tool Configuration"
-        dependencyCheck 'OWASP-DC'
+        DependencyCheck 'OWASP-DC'
     }
     steps {
         withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
