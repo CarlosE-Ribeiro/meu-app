@@ -78,7 +78,7 @@ pipeline {
   }
   post {
     always {
-      echo "Build: ${currentBuild.currentResult}"
+      echo "Pipeline: ${currentOwaspDenpendencyCheck.currentResult}"
     }
   }
 }
