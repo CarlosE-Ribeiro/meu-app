@@ -1,128 +1,128 @@
 pipeline {
 
-  agent any
+ agent any
 
 
 
-  // Ajuste os nomes conforme "Manage Jenkins » Tools"
+ // Ajuste os nomes conforme "Manage Jenkins » Tools"
 
-  tools {
+tools {
 
-    jdk   'jdk-21'    // ex.: JDK 21 instalado no Jenkins
+ jdk 'jdk-21' // ex.: JDK 21 instalado no Jenkins
 
-    maven 'maven-3.9' // ex.: Maven 3.x instalado no Jenkins
+ maven 'maven-3.9' // ex.: Maven 3.x instalado no Jenkins
 
-  }
+}
 
 
 
-  options {
+options {
 
-    timestamps()
+timestamps()
 
-    buildDiscarder(logRotator(numToKeepStr: '20'))
+buildDiscarder(logRotator(numToKeepStr: '20'))
 
-  }
+}
 
 
 
-  parameters {
+parameters {
 
-    booleanParam(name: 'RUN_DEP_SCAN', defaultValue: true, description: 'Executar OWASP Dependency-Check?')
+booleanParam(name: 'RUN_DEP_SCAN', defaultValue: true, description: 'Executar OWASP Dependency-Check?')
 
-    string(name: 'FAIL_CVSS', defaultValue: '7.0', description: 'Falhar build se CVSS >= (ex.: 7.0). Use 0 para nunca falhar.')
+string(name: 'FAIL_CVSS', defaultValue: '7.0', description: 'Falhar build se CVSS >= (ex.: 7.0). Use 0 para nunca falhar.')
 
-  }
+}
 
 
 
-  environment {
+environment {
 
-    // pasta de cache local do Dependency-Check
+// pasta de cache local do Dependency-Check
 
-    DC_CACHE = 'C:\\DC_CACHE'
+DC_CACHE = 'C:\\DC_CACHE'
 
-    // tunáveis para contornar rate limit/Cloudflare
+// tunáveis para contornar rate limit/Cloudflare
 
-    NVD_DELAY_MS = '30000'
+NVD_DELAY_MS = '30000'
 
-    NVD_RETRIES = '15'
+NVD_RETRIES = '15'
 
-    NVD_CF_RETRIES = '15'
+NVD_CF_RETRIES = '15'
 
-  }
+}
 
 
 
-  stages {
+stages {
 
 
 
-    stage('Checkout') {
+stage('Checkout') {
 
-      steps {
+steps {
 
-        checkout scm
+ checkout scm
 
-      }
+ }
 
-    }
+ }
 
 
 
-    stage('Build') {
+stage('Build') {
 
-      steps {
+ steps {
 
-        bat '''
+ bat '''
 
-          mvn -B -DskipTests clean package
+ mvn -B -DskipTests clean package
 
-        '''
+ '''
 
-      }
+ }
 
-      post {
+ post {
 
-        always {
+ always {
 
-          archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
+ archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
 
-          fingerprint 'target/*.jar'
+ fingerprint 'target/*.jar'
 
-        }
+ }
 
-      }
+ }
 
-    }
+ }
 
 
 
-    stage('Test') {
+ stage('Test') {
 
-      steps {
+ steps {
 
-        bat '''
+ bat '''
 
-          mvn -B test
+ mvn -B test
 
-        '''
+ '''
 
-      }
+ }
 
-      post {
+ post {
 
-        always {
+ always {
 
-          junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+ junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
 
-        }
+ }
 
-      }
+ }
 
-    }
+ }
 
-   
+
 
 stage('OWASP Dependency-Check') {
     // a diretiva 'when' executa o stage somente se o parâmetro for true
@@ -147,17 +147,17 @@ stage('OWASP Dependency-Check') {
     }
 }
 
- 
 
-  }
 
-  post {
+ }
 
-    always {
+ post {
 
-      echo "Pipeline finalizado"
+ always {
 
-    }
+echo "Pipeline finalizado"
+
+ }
 
   }
 
