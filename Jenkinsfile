@@ -67,8 +67,7 @@ pipeline {
         withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
             script {
                 // Adiciona o argumento --apiKey e passa a variável de ambiente
-                dependencyCheck additionalArguments: "--scan . --format ALL --prettyPrint --apiKey ${env.NVD_API_KEY}", odcInstallation: 'OWASP-DC'
-                
+                dependencyCheck additionalArguments: "--scan . --format ALL --prettyPrint --apiKey ${env.NVD_API_KEY}"
                 // O publisher continua o mesmo
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
