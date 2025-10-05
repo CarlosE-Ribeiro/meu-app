@@ -63,13 +63,13 @@ pipeline {
 
 
     
-    stage( 'Vulnerabilidades de verificação de dependência OWASP' ) { 
+    stage( 'OWASP Dependency Check' ) { 
       steps { 
         dependencyCheck additionalArguments: ''' 
                     -o './' 
                     -s './' 
                     -f 'ALL' 
-                    --prettyPrint''' , odcInstallation: 'Vulnerabilidades de verificação de dependência OWASP'
+                    --prettyPrint''' , odcInstallation: 'dependency check'
         
          dependencyCheckPublisher pattern: 'dependency-check-report.xml'
        } 
