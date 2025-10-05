@@ -60,8 +60,6 @@ pipeline {
         }
       }
     }
-
-
     
     stage( 'OWASP Dependency Check' ) { 
       steps { 
@@ -78,7 +76,7 @@ pipeline {
   }
   post {
     always {
-      echo "Pipeline: ${currentOwaspDenpendencyCheck.currentResult}"
+      echo "Pipeline finalizado"
     }
   }
 }
