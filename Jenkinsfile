@@ -62,25 +62,17 @@ pipeline {
     }
     
     stage('OWASP Dependency-Check') {
-    // a diretiva 'when' executa o stage somente se o parâmetro for true
-    when {
-        expression { params.RUN_DEP_SCAN }
-    }
     steps {
+        // Envolve o comando com withCredentials para acessar a chave de forma segura
         withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
             script {
-                // 1. Garanta que a ferramenta 'OWASP-DC' existe em "Manage Jenkins » Tools"
-                def dcPath = tool name: 'OWASP-DC', type: 'dependencyCheck'
-
-                // 2. Executa o comando para Windows (.bat) usando o caminho completo
-                bat """
-                    call "${dcPath}\\bin\\dependency-check.bat" --scan "." --format "ALL" --prettyPrint --apiKey "%NVD_API_KEY%" --project "Meu Projeto" --failOnCVSS ${params.FAIL_CVSS} --data "%DC_CACHE%"
-                """
+                // Adiciona o argumento --apiKey e passa a variável de ambiente
+                dependencyCheck additionalArguments: "--scan . --format ALL --prettyPrint --apiKey ${env.NVD_API_KEY}", odcInstallation: 'OWASP-DC'
+                
+                // O publisher continua o mesmo
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
-        
-        // O publisher continua o mesmo
-        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
     }
 }
  
