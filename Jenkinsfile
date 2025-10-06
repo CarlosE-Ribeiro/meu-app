@@ -1,18 +1,90 @@
 pipeline {
-    
     agent any
 
+    // Ajuste os nomes conforme "Manage Jenkins » Tools"
+    tools {
+        jdk 'jdk-21'            // ex.: JDK 21 instalado no Jenkins
+        maven 'maven-3.9'       // ex.: Maven 3.x instalado no Jenkins
+    }
+
+    options {
+        timestamps()                                // Adiciona timestamps nos logs
+        buildDiscarder(logRotator(numToKeepStr: '20'))  // Mantém as últimas 20 builds
+    }
+
+    parameters {
+        booleanParam(
+            name: 'RUN_DEP_SCAN', 
+            defaultValue: true, 
+            description: 'Executar OWASP Dependency-Check?'
+        )
+        string(
+            name: 'FAIL_CVSS', 
+            defaultValue: '7.0', 
+            description: 'Falhar build se CVSS >= (ex.: 7.0). Use 0 para nunca falhar.'
+        )
+    }
+
+    environment {
+        DC_CACHE       = 'C:\\DC_CACHE'  // Diretório de cache para o Dependency-Check
+        NVD_DELAY_MS   = '30000'         // Delay entre requisições
+        NVD_RETRIES    = '15'            // Tentativas em caso de erro
+        NVD_CF_RETRIES = '15'            // Tentativas adicionais com Cloudflare
+    }
+
     stages {
-        stage('Hello') {
+
+        stage('Checkout') {
             steps {
-                echo 'Hello World'
+                checkout scm  // Faz o checkout do repositório Git
             }
         }
-        
-        stage('dependency check'){
+
+        stage('Build') {
             steps {
-                dependencyCheck additionalArguments: '', nvdCredentialsId: 'nvd-api-key', odcInstallation: 'OWASP-DC'
+                bat '''
+                    mvn -B -DskipTests clean package
+                ''' // Compila o projeto sem rodar os testes
             }
+            post {
+                always {
+                    archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
+                    fingerprint 'target/*.jar'
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                bat '''
+                    mvn -B test
+                ''' // Executa os testes automatizados
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        // Novo estágio adicionado: Dependency Check
+        stage('Dependency Check') {
+            when {
+                expression { params.RUN_DEP_SCAN } // Executa apenas se RUN_DEP_SCAN for true
+            }
+            steps {
+                dependencyCheck(
+                    additionalArguments: '',                      // Argumentos adicionais (vazio por padrão)
+                    nvdCredentialsId: 'nvd-api-key',              // ID da credencial da API do NVD (configurada no Jenkins)
+                    odcInstallation: 'OWASP-DC'                   // Nome da instalação do OWASP DC em "Global Tool Configuration"
+                )
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Pipeline finalizado"  // Executado ao final da pipeline, com sucesso ou erro
         }
     }
 }
