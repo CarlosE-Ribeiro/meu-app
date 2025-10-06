@@ -62,18 +62,10 @@ pipeline {
             }
         }
 
-        stage('OWASP Dependency-Check') {
+        stage('Dependency check') {
             steps {
-                // Envolve o comando com withCredentials para acessar a chave de forma segura
-                withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
-                    script {
-                        // Adiciona o argumento --apiKey e passa a variável de ambiente
-                        dependencyCheck additionalArguments: '--scan . --format ALL --prettyPrint --nvdApiKey $env.NVD_API_KEY', odcInstallation: 'OWASP-DC'
-                        
-                        // O publisher continua o mesmo
-                        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-                    }
-                }
+                dependencyCheck additionalArguments: '--format HTML --format XML', odcInstallation: 'OWASP-DC'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
     }
