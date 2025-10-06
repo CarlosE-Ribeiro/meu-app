@@ -57,14 +57,22 @@ pipeline {
             }
         }
 
-        stage('Check Dependency'){
-            steps{
-                dependencyCheck additionalArguments: '''
-                -- scan \'./'
-                -- out \'./'
-                -- format \'ALL\'
-                --prettyPrint ''', odcInstallation: 'OWASP-DC'
+        stage('OWASP Dependency Check') {
+            steps {
+                dependencyCheck additionalArguments: '--scan target/', odcInstallation: 'OWASP-DC'
+            }
+        }
 
+        stage('Publish OWASP Dependency Check Report') {
+            steps {
+                publishHTML(target: [
+                    allowMissing: false,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: 'target',
+                    reportFiles: 'dependency-check-report.html',
+                    reportName: 'OWASP Dependency Check Report'
+                ])
             }
         }
 
