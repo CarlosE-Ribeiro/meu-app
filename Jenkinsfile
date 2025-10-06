@@ -57,6 +57,21 @@ pipeline {
             }
         }
 
+        stage('Bootstrap DC DB (rodar 1x)') {
+  steps {
+    withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+      bat """
+        if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
+        mvn -B org.owasp:dependency-check-maven:update-only ^
+          -Ddata="%DC_CACHE%" ^
+          -DnvdApiKey=%NVD_API_KEY% ^
+          -DnvdApiDelay=60000 ^
+          -DnvdMaxRetryCount=20
+      """
+    }
+  }
+}
+
         stage('Dependency Check') {
   steps {
     bat """
@@ -67,14 +82,13 @@ pipeline {
       mvn -B org.owasp:dependency-check-maven:check ^
         -Dformat=HTML,XML ^
         -Ddata="%DC_CACHE%" ^
-        -Dnoupdate ^
+        -Dnoupdate=true ^
         -DfailOnCVSS=%%FAILCVSS%% ^
         -DfailOnError=false
     """
   }
   post {
     always {
-      // Publica só se o XML existir (evita UNSTABLE por ausência de arquivo)
       script {
         def xml = 'target/dependency-check-report.xml'
         def html = 'target/dependency-check-report.html'
@@ -92,6 +106,7 @@ pipeline {
     }
   }
 }
+  
 
     }
         
