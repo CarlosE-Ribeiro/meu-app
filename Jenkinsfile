@@ -61,45 +61,12 @@ pipeline {
       }
     }
 
-    stage('OWASP Dependency-Check') {
-      when { expression { return params.RUN_DEP_SCAN } }
-      steps {
-        // Garante que a pasta de cache existe (Windows)
-        bat 'if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"'
-
-        // Executa o scan via plugin do Jenkins (instalação "OWASP-DC")
-        dependencyCheck(
-          odcInstallation: 'OWASP-DC',
-          nvdCredentialsId: 'nvd-api-key', // credencial "Secret text" com a API Key da NVD
-          additionalArguments: """
-            --scan .
-            --format ALL
-            --prettyPrint
-            --failOnCVSS ${params.FAIL_CVSS}
-            --data "${env.DC_CACHE}"
-            --out "odc-reports"
-            --nvdApiDelay ${env.NVD_DELAY_MS}
-            --nvdApiRetries ${env.NVD_RETRIES}
-            --nvdApiCloudflareRetries ${env.NVD_CF_RETRIES}
-            --disableAssembly
-            --disableNodeJS
-            --disableNodeAudit
-            --disableNugetConf
-            --disablePnpmAudit
-            --disableYarnAudit
-          """.trim().replaceAll("\\s+"," ")
-        )
-
-        // Publica o XML para aparecer o gráfico/summary no job
-        dependencyCheckPublisher pattern: 'odc-reports/dependency-check-report.xml'
-      }
-      post {
-        always {
-          // Guarda todos os formatos (HTML/JSON/SARIF/XML) como artefatos do build
-          archiveArtifacts artifacts: 'odc-reports/dependency-check-report.*', allowEmptyArchive: true
+    stage('Dendency Check') {
+            steps {
+                dependencyCheck additionalArguments: '--format HTML --format XML', odcInstallation: 'OWASP-DC'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
         }
-      }
-    }
   }
 
   post {
