@@ -53,26 +53,37 @@ pipeline {
     }
 
     stage('Dependency Check') {
-        when { expression { return params.RUN_DEP_SCAN } }
-        steps {
-            bat '''
-            if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
-            mvn -B org.owasp:dependency-check-maven:check ^
-                -Dformat=HTML,XML ^
-                -Ddata="%DC_CACHE%" ^
-                -DfailOnCVSS=%FAIL_CVSS% ^
-                -DnvdApiDelay=%NVD_DELAY_MS% ^
-                -DnvdMaxRetryCount=%NVD_RETRIES%
-            '''
-        }
-        post {
-            always {
-            // Com o Maven plugin o relatório fica em target/
-            dependencyCheckPublisher pattern: 'target/dependency-check-report.xml'
-            archiveArtifacts artifacts: 'target/dependency-check-report.html', allowEmptyArchive: true
-            }
-        }
+  when { expression { return params.RUN_DEP_SCAN } }
+  steps {
+    withCredentials([string(credentialsId: 'NVD_API_KEY', variable: 'NVD_API_KEY')]) {
+      bat '''
+        if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
+
+        rem 1) Popula o cache local (primeira vez ou quando quiser atualizar a base)
+        mvn -B org.owasp:dependency-check-maven:update-only ^
+          -Ddata="%DC_CACHE%" ^
+          -DnvdApiKey=%NVD_API_KEY% ^
+          -DnvdApiDelay=%NVD_DELAY_MS% ^
+          -DnvdMaxRetryCount=%NVD_RETRIES%
+
+        rem 2) Executa o scan usando o cache; se quiser nunca falhar por erro interno, acrescente -DfailOnError=false
+        mvn -B org.owasp:dependency-check-maven:check ^
+          -Dformat=HTML,XML ^
+          -Ddata="%DC_CACHE%" ^
+          -DnvdApiKey=%NVD_API_KEY% ^
+          -DnvdApiDelay=%NVD_DELAY_MS% ^
+          -DnvdMaxRetryCount=%NVD_RETRIES% ^
+          -DfailOnCVSS=%FAIL_CVSS%
+      '''
     }
+  }
+  post {
+    always {
+      dependencyCheckPublisher pattern: 'target/dependency-check-report.xml'
+      archiveArtifacts artifacts: 'target/dependency-check-report.html', allowEmptyArchive: true
+    }
+  }
+}
 
   }
 
