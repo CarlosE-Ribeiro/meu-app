@@ -34,11 +34,6 @@ pipeline {
 
     stages {
 
-        stage('Checkout') {
-            steps {
-                checkout scm  // Faz o checkout do repositório Git
-            }
-        }
 
         stage('Build') {
             steps {
@@ -67,17 +62,12 @@ pipeline {
             }
         }
 
-        // Novo estágio adicionado: Dependency Check
-        stage('Dependency Check') {
-            when {
-                expression { params.RUN_DEP_SCAN } // Executa apenas se RUN_DEP_SCAN for true
-            }
+        stage('OWASP Dependency-Check') {
             steps {
-                dependencyCheck(
-                    additionalArguments: '',                      // Argumentos adicionais (vazio por padrão)
-                    nvdCredentialsId: 'nvd-api-key',              // ID da credencial da API do NVD (configurada no Jenkins)
-                    odcInstallation: 'OWASP-DC'                   // Nome da instalação do OWASP DC em "Global Tool Configuration"
-                )
+                script {
+                    dependencyCheck additionalArguments: '--scan . --format ALL --prettyPrint', odcInstallation: 'OWASP-DC'
+                    dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                }
             }
         }
     }
