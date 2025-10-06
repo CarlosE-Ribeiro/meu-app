@@ -57,7 +57,16 @@ pipeline {
             }
         }
 
-       
+        stage('Check Dependency'){
+            steps{
+                dependencyCheck additionalArguments: '''
+                -- scan \'./'
+                -- out \'./'
+                -- format \'ALL\'
+                --prettyPrint ''', odcInstallation: 'OWASP-DC'
+
+            }
+        }
 
     }
         
