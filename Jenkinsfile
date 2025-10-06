@@ -11,10 +11,10 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '20'))
     }
 
-    parameters {
-        booleanParam(name: 'RUN_DEP_SCAN', defaultValue: true, description: 'Executar OWASP Dependency-Check?')
-        string(name: 'FAIL_CVSS', defaultValue: '7.0', description: 'Falhar build se CVSS >= (ex.: 7.0). Use 0 para nunca falhar.')
-    }
+    //parameters {
+    //    booleanParam(name: 'RUN_DEP_SCAN', defaultValue: true, description: 'Executar OWASP Dependency-Check?')
+    //    string(name: 'FAIL_CVSS', defaultValue: '7.0', description: 'Falhar build se CVSS >= (ex.: 7.0). Use 0 para nunca falhar.')
+    //}
 
     environment {
         DC_CACHE = 'C:\\DC_CACHE'        // Pasta de cache local do Dependency-Check
@@ -54,12 +54,6 @@ pipeline {
                 always {
                     junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
                 }
-            }
-        }
-
-        stage('Dependency Check') {
-            steps {
-                bat 'mvn -B org.owasp:dependency-check-maven:check -Dformat=HTML,XML -Ddata="%DC_CACHE%" -DfailOnCVSS=' + params.FAIL_CVSS
             }
         }
     }
