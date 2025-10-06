@@ -55,9 +55,33 @@ pipeline {
                     junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
                 }
             }
-        }   
-    }
+        }
 
+        stage('Dependency Check') {
+            when { expression { return params.RUN_DEP_SCAN } }
+            steps {
+                withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                bat """
+                    if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
+                    mvn -B org.owasp:dependency-check-maven:check ^
+                    -Dformat=HTML,XML ^
+                    -Ddata="%DC_CACHE%" ^
+                    -DnvdApiKey=%NVD_API_KEY% ^
+                    -DfailOnCVSS=%FAIL_CVSS% ^
+                    -DfailOnError=false
+                """
+                }
+            }
+            post {
+                always {
+                dependencyCheckPublisher pattern: 'target/dependency-check-report.xml'
+                archiveArtifacts artifacts: 'target/dependency-check-report.html', allowEmptyArchive: true
+                }
+            }
+        }
+
+    }
+        
     post {
         always {
             echo "Pipeline finalizado"
