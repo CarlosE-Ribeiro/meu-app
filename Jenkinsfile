@@ -55,7 +55,7 @@ pipeline {
     stage('Dependency Check') {
   when { expression { return params.RUN_DEP_SCAN } }
   steps {
-    withCredentials([string(credentialsId: 'NVD_API_KEY', variable: 'NVD_API_KEY')]) {
+    withCredentials([string(credentialsId: 'nvd-api-key', variable: 'nvd-api-key')]) {
       bat '''
         if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
 
