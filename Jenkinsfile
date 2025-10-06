@@ -57,7 +57,41 @@ pipeline {
             }
         }
 
-        
+        stage('Dependency Check') {
+  steps {
+    bat """
+      if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
+      set FAILCVSS=%FAIL_CVSS%
+      if "%%FAILCVSS%%"=="" set FAILCVSS=0
+
+      mvn -B org.owasp:dependency-check-maven:check ^
+        -Dformat=HTML,XML ^
+        -Ddata="%DC_CACHE%" ^
+        -Dnoupdate ^
+        -DfailOnCVSS=%%FAILCVSS%% ^
+        -DfailOnError=false
+    """
+  }
+  post {
+    always {
+      // Publica só se o XML existir (evita UNSTABLE por ausência de arquivo)
+      script {
+        def xml = 'target/dependency-check-report.xml'
+        def html = 'target/dependency-check-report.html'
+        if (fileExists(xml)) {
+          dependencyCheckPublisher pattern: xml
+        } else {
+          echo "Dependency-Check: relatório XML não encontrado (provável sem análise)."
+        }
+        if (fileExists(html)) {
+          archiveArtifacts artifacts: html, allowEmptyArchive: true
+        } else {
+          echo "Dependency-Check: relatório HTML não encontrado."
+        }
+      }
+    }
+  }
+}
 
     }
         
