@@ -64,9 +64,15 @@ pipeline {
 
         stage('OWASP Dependency-Check') {
             steps {
-                script {
-                    dependencyCheck additionalArguments: '--scan . --format ALL --prettyPrint', odcInstallation: 'OWASP-DC'
-                    dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                // Envolve o comando com withCredentials para acessar a chave de forma segura
+                withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                    script {
+                        // Adiciona o argumento --apiKey e passa a variável de ambiente
+                        dependencyCheck additionalArguments: "--scan . --format ALL --prettyPrint --apiKey ${env.NVD_API_KEY}", odcInstallation: 'OWASP-DC'
+                        
+                        // O publisher continua o mesmo
+                        dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                    }
                 }
             }
         }
