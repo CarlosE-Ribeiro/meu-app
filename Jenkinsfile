@@ -57,56 +57,7 @@ pipeline {
             }
         }
 
-        stage('Bootstrap DC DB (rodar 1x)') {
-  steps {
-    withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
-      bat """
-        if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
-        mvn -B org.owasp:dependency-check-maven:update-only ^
-          -Ddata="%DC_CACHE%" ^
-          -DnvdApiKey=%NVD_API_KEY% ^
-          -DnvdApiDelay=60000 ^
-          -DnvdMaxRetryCount=20
-      """
-    }
-  }
-}
-
-        stage('Dependency Check') {
-  steps {
-    bat """
-      if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
-      set FAILCVSS=%FAIL_CVSS%
-      if "%%FAILCVSS%%"=="" set FAILCVSS=0
-
-      mvn -B org.owasp:dependency-check-maven:check ^
-        -Dformat=HTML,XML ^
-        -Ddata="%DC_CACHE%" ^
-        -Dnoupdate=true ^
-        -DfailOnCVSS=%%FAILCVSS%% ^
-        -DfailOnError=false
-    """
-  }
-  post {
-    always {
-      script {
-        def xml = 'target/dependency-check-report.xml'
-        def html = 'target/dependency-check-report.html'
-        if (fileExists(xml)) {
-          dependencyCheckPublisher pattern: xml
-        } else {
-          echo "Dependency-Check: relatório XML não encontrado (provável sem análise)."
-        }
-        if (fileExists(html)) {
-          archiveArtifacts artifacts: html, allowEmptyArchive: true
-        } else {
-          echo "Dependency-Check: relatório HTML não encontrado."
-        }
-      }
-    }
-  }
-}
-  
+       
 
     }
         
