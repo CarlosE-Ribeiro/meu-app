@@ -58,7 +58,7 @@ pipeline {
         }
 
         stage('Dependency Check') {
-            when { expression { return params.RUN_DEP_SCAN } }
+          //  when { expression { return params.RUN_DEP_SCAN } }
             steps {
                 withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
                 bat """
