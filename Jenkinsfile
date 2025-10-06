@@ -1,10 +1,9 @@
 pipeline {
   agent any
 
-  // Ajuste os nomes conforme "Manage Jenkins » Tools"
   tools {
-    jdk 'jdk-21'        // ex.: JDK 21 instalado no Jenkins
-    maven 'maven-3.9'   // ex.: Maven 3.x instalado no Jenkins
+    jdk 'jdk-21'
+    maven 'maven-3.9'
   }
 
   options {
@@ -18,9 +17,7 @@ pipeline {
   }
 
   environment {
-    // pasta de cache local do Dependency-Check
     DC_CACHE = 'C:\\DC_CACHE'
-    // tunáveis para contornar rate limit/Cloudflare
     NVD_DELAY_MS = '30000'
     NVD_RETRIES = '15'
     NVD_CF_RETRIES = '15'
@@ -29,16 +26,12 @@ pipeline {
   stages {
 
     stage('Checkout') {
-      steps {
-        checkout scm
-      }
+      steps { checkout scm }
     }
 
     stage('Build') {
       steps {
-        bat '''
-          mvn -B -DskipTests clean package
-        '''
+        bat 'mvn -B -DskipTests clean package'
       }
       post {
         always {
@@ -50,9 +43,7 @@ pipeline {
 
     stage('Test') {
       steps {
-        bat '''
-          mvn -B test
-        '''
+        bat 'mvn -B test'
       }
       post {
         always {
@@ -61,17 +52,31 @@ pipeline {
       }
     }
 
-    stage('Dendency Check') {
-            steps {
-                dependencyCheck additionalArguments: '--format HTML --format XML', odcInstallation: 'OWASP-DC'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-            }
+    stage('Dependency Check') {
+      when { expression { return params.RUN_DEP_SCAN } }
+      steps {
+        // garante o cache no Windows
+        bat '''
+          if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
+        '''
+        // roda o scanner (gera HTML e XML no workspace)
+        dependencyCheck(
+          odcInstallation: 'OWASP-DC',                // <- deve bater com o nome no Global Tool
+          additionalArguments: "--data \"%DC_CACHE%\" --format HTML --format XML --nvdApiDelay %NVD_DELAY_MS% --nvdMaxRetryCount %NVD_RETRIES% --nvdApiMaxRetryCount %NVD_CF_RETRIES% --failOnCVSS ${FAIL_CVSS}"
+        )
+      }
+      post {
+        always {
+          // publica o relatório (o plugin espera esse nome por padrão)
+          dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+          // opcional: arquiva também o HTML para consulta
+          archiveArtifacts artifacts: 'dependency-check-report.html', allowEmptyArchive: true
         }
+      }
+    }
   }
 
   post {
-    always {
-      echo "Pipeline finalizado"
-    }
+    always { echo 'Pipeline finalizado' }
   }
 }
