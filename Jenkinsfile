@@ -51,18 +51,14 @@ pipeline {
 
         stage('Test') {
             steps {
-                bat '''
+                bat """
                 mvn -B test
-                rem gera o relatorio HTML dos testes
                 mvn -B surefire-report:report -Daggregate=true
-                '''
+                """
             }
             post {
                 always {
-                // tabelas e gráficos nativos do Jenkins (histórico, etc.)
                 junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
-
-                // publica o HTML bonito
                 publishHTML(target: [
                     allowMissing: true,
                     keepAll: true,
@@ -76,7 +72,6 @@ pipeline {
 
         stage('OWASP Dependency-Check') {
             steps {
-                // se estiver usando cache offline, adicione -Dnoupdate
                 bat """
                 if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
                 mvn -B org.owasp:dependency-check-maven:check ^
@@ -88,10 +83,10 @@ pipeline {
             }
             post {
                 always {
-                // publica no painel padrão do plugin OWASP (link "Dependency-Check")
+                // 1) Painel nativo do plugin OWASP (link "Dependency-Check")
                 dependencyCheckPublisher pattern: 'target/dependency-check-report.xml'
 
-                // publica o HTML bonito
+                // 2) Relatório HTML bonitão (precisa do plugin "HTML Publisher")
                 publishHTML(target: [
                     allowMissing: true,
                     keepAll: true,
@@ -100,13 +95,14 @@ pipeline {
                     reportName: 'OWASP Dependency-Check (HTML)'
                 ])
 
-                // tabela integrada (Warnings NG) - opcional, mas recomendo:
+                // 3) Tabela integrada no Jenkins (Warnings NG)  << ESTE É O QUE FALTAVA
                 recordIssues enabledForFailure: true, tools: [
                     dependencyCheck(pattern: 'target/dependency-check-report.xml')
                 ]
                 }
             }
         }
+
     }
 
     post {
