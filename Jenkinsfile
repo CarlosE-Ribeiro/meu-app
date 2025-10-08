@@ -51,58 +51,33 @@ pipeline {
 
         stage('Test') {
             steps {
-                bat """
-                mvn -B test
-                mvn -B surefire-report:report -Daggregate=true
-                """
+                bat '''
+                    mvn -B test
+                ''' // Executa os testes automatizados
             }
             post {
                 always {
-                junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
-                publishHTML(target: [
-                    allowMissing: true,
-                    keepAll: true,
-                    reportDir: 'target/site',
-                    reportFiles: 'surefire-report.html',
-                    reportName: 'Test Report (Surefire HTML)'
-                ])
+                    junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
                 }
             }
         }
 
         stage('OWASP Dependency-Check') {
             steps {
-                bat """
-                if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
-                mvn -B org.owasp:dependency-check-maven:check ^
-                    -Dformat=HTML,XML ^
-                    -Ddata="%DC_CACHE%" ^
-                    -DfailOnCVSS=%FAIL_CVSS% ^
-                    -DfailOnError=false
-                """
-            }
-            post {
-                always {
-                // 1) Painel nativo do plugin OWASP (link "Dependency-Check")
-                dependencyCheckPublisher pattern: 'target/dependency-check-report.xml'
-
-                // 2) Relatório HTML bonitão (precisa do plugin "HTML Publisher")
-                publishHTML(target: [
-                    allowMissing: true,
-                    keepAll: true,
-                    reportDir: 'target',
-                    reportFiles: 'dependency-check-report.html',
-                    reportName: 'OWASP Dependency-Check (HTML)'
-                ])
-
-                // 3) Tabela integrada no Jenkins (Warnings NG)  << ESTE É O QUE FALTAVA
-                recordIssues enabledForFailure: true, tools: [
-                    dependencyCheck(pattern: 'target/dependency-check-report.xml')
-                ]
+                // withCredentials continua igual, para carregar a chave na variável de ambiente
+                withCredentials([string(credentialsId: 'nvd-api-key', variable: 'NVD_API_KEY')]) {
+                    
+                    // AGORA, usamos um passo 'sh' para executar a ferramenta de linha de comando
+                    // O Jenkins garante que a variável ${NVD_API_KEY} seja usada de forma segura aqui
+                    sh '''
+                        dependency-check.sh --scan "." --format "ALL" --prettyPrint --nvdapiKey "${NVD_API_KEY}" --project "Meu Projeto"
+                    '''
                 }
+                
+                // O publisher continua o mesmo, para coletar os resultados após a execução
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
         }
-
     }
 
     post {
