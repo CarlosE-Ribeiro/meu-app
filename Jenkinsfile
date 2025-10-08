@@ -20,8 +20,8 @@ pipeline {
         )
         string(
             name: 'FAIL_CVSS', 
-            defaultValue: '5.0', 
-            description: 'Inisira um valor de tolerância de CVSS, por exemplo: 5.0'
+            defaultValue: '7.0', 
+            description: 'Falhar build se CVSS >= (ex.: 7.0). Use 0 para nunca falhar.'
         )
     }
 
@@ -62,33 +62,12 @@ pipeline {
             }
         }
 
-        stage('OWASP Dependency-Check') {
+        stage('Dependency check') {
             steps {
-                dependencyCheck additionalArguments: '--format HTML --format XML', odcInstallation: 'OWASP-DC'
+                dependencyCheck additionalArguments: '--format HTML', odcInstallation: 'OWASP-DC'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
-            post {
-                always {
-                    // Publisher padrão do Dependency-Check
-                    dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
-
-                    // NOVO: Publisher para o relatório HTML
-                    publishHTML(
-                        target: [
-                            allowMissing: false,
-                            directory: 'target', // A pasta onde o relatório HTML é gerado
-                            files: 'dependency-check-report.html',
-                            keepAll: true,
-                            reportDir: 'dependency-check-report',
-                            reportFiles: 'dependency-check-report.html',
-                            reportName: 'Relatório de Vulnerabilidades HTML'
-                        ]
-                    )
-                }
-            }
         }
-
-
     }
 
     post {
