@@ -52,20 +52,59 @@ pipeline {
         stage('Test') {
             steps {
                 bat '''
-                    mvn -B test
-                ''' // Executa os testes automatizados
+                mvn -B test
+                rem gera o relatorio HTML dos testes
+                mvn -B surefire-report:report -Daggregate=true
+                '''
             }
             post {
                 always {
-                    junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+                // tabelas e gráficos nativos do Jenkins (histórico, etc.)
+                junit allowEmptyResults: true, testResults: '**/surefire-reports/*.xml'
+
+                // publica o HTML bonito
+                publishHTML(target: [
+                    allowMissing: true,
+                    keepAll: true,
+                    reportDir: 'target/site',
+                    reportFiles: 'surefire-report.html',
+                    reportName: 'Test Report (Surefire HTML)'
+                ])
                 }
             }
         }
 
-        stage('Dependency check') {
+        stage('OWASP Dependency-Check') {
             steps {
-                dependencyCheck additionalArguments: '--format HTML --format XML', odcInstallation: 'OWASP-DC'
-                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+                // se estiver usando cache offline, adicione -Dnoupdate
+                bat """
+                if not exist "%DC_CACHE%" mkdir "%DC_CACHE%"
+                mvn -B org.owasp:dependency-check-maven:check ^
+                    -Dformat=HTML,XML ^
+                    -Ddata="%DC_CACHE%" ^
+                    -DfailOnCVSS=%FAIL_CVSS% ^
+                    -DfailOnError=false
+                """
+            }
+            post {
+                always {
+                // publica no painel padrão do plugin OWASP (link "Dependency-Check")
+                dependencyCheckPublisher pattern: 'target/dependency-check-report.xml'
+
+                // publica o HTML bonito
+                publishHTML(target: [
+                    allowMissing: true,
+                    keepAll: true,
+                    reportDir: 'target',
+                    reportFiles: 'dependency-check-report.html',
+                    reportName: 'OWASP Dependency-Check (HTML)'
+                ])
+
+                // tabela integrada (Warnings NG) - opcional, mas recomendo:
+                recordIssues enabledForFailure: true, tools: [
+                    dependencyCheck(pattern: 'target/dependency-check-report.xml')
+                ]
+                }
             }
         }
     }
@@ -75,4 +114,5 @@ pipeline {
             echo "Pipeline finalizado"  // Executado ao final da pipeline, com sucesso ou erro
         }
     }
+
 }
