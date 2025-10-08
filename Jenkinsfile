@@ -21,7 +21,7 @@ pipeline {
         string(
             name: 'FAIL_CVSS', 
             defaultValue: '5.0', 
-            description: 'Inisira um valor de tolerância de CVSS, por exemplo: 5.0'
+            description: 'Inisira um valor de tolerância de CVSS (0-10), por exemplo: 5.0'
         )
     }
 
