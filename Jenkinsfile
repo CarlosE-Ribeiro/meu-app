@@ -62,12 +62,33 @@ pipeline {
             }
         }
 
-        stage('Dependency check') {
+        stage('OWASP Dependency-Check') {
             steps {
                 dependencyCheck additionalArguments: '--format HTML --format XML', odcInstallation: 'OWASP-DC'
                 dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
             }
+            post {
+                always {
+                    // Publisher padrão do Dependency-Check
+                    dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+
+                    // NOVO: Publisher para o relatório HTML
+                    publishHTML(
+                        target: [
+                            allowMissing: false,
+                            directory: 'target', // A pasta onde o relatório HTML é gerado
+                            files: 'dependency-check-report.html',
+                            keepAll: true,
+                            reportDir: 'dependency-check-report',
+                            reportFiles: 'dependency-check-report.html',
+                            reportName: 'Relatório de Vulnerabilidades HTML'
+                        ]
+                    )
+                }
+            }
         }
+
+
     }
 
     post {
