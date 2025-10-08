@@ -20,8 +20,8 @@ pipeline {
         )
         string(
             name: 'FAIL_CVSS', 
-            defaultValue: '7.0', 
-            description: 'Falhar build se CVSS >= (ex.: 7.0). Use 0 para nunca falhar.'
+            defaultValue: '5.0', 
+            description: 'Inisira um valor de tolerância de CVSS, por exemplo: 5.0'
         )
     }
 
